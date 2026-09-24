@@ -47,11 +47,12 @@ The app itself is in English.
 
 ## 2. The box firmware (for the technician)
 
-Boxes as delivered need nothing. To update one, write
-`firmware/fieldbox-fw-0.3.1-bt.bin` at address `0x0` over USB (esptool or the
-Flash Download Tool; the CH340 driver on Windows). **Download the files from
-the box first:** the first start after an update clears its memory. Details in
-chapter 5 of the installation guide.
+Boxes as delivered need nothing. To update one, open
+`firmware/fieldbox_bt_v0_3/fieldbox_bt_v0_3.ino` in the **Arduino IDE** and
+upload it over USB. Chapter 5 of the installation guide walks through every
+click, with screenshots. Using esptool or the Flash Download Tool instead,
+write `firmware/fieldbox-fw-0.3.1-bt.bin` at address `0x0`. **Download the files from
+the box first:** the first start after an update clears its memory.
 
 ## 3. The manuals
 

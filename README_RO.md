@@ -48,11 +48,12 @@ rămân. Aplicația este în engleză.
 
 ## 2. Firmware-ul cutiei (pentru tehnician)
 
-Cutiile livrate nu au nevoie de nimic. Pentru o actualizare, scrieți
-`firmware/fieldbox-fw-0.3.1-bt.bin` la adresa `0x0` prin USB (esptool sau
-Flash Download Tool; pe Windows, driverul CH340). **Luați mai întâi
+Cutiile livrate nu au nevoie de nimic. Pentru o actualizare, deschideți
+`firmware/fieldbox_bt_v0_3/fieldbox_bt_v0_3.ino` în **Arduino IDE** și
+scrieți-l pe cutie prin USB. Capitolul 5 din ghidul de instalare arată
+fiecare clic, cu capturi de ecran. Cu esptool sau Flash Download Tool,
+scrieți `firmware/fieldbox-fw-0.3.1-bt.bin` la adresa `0x0`. **Luați mai întâi
 fișierele de pe cutie:** prima pornire după actualizare îi golește memoria.
-Detalii în capitolul 5 din ghidul de instalare.
 
 ## 3. Manualele
 
