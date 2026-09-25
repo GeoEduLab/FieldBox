@@ -38,8 +38,8 @@ opens here on GitHub; the ⬇ arrow next to it downloads it.
 | the values right now and the last 50 minutes | the stations of the route; one tap reads the box, with a photo | the route walked and the points read |
 
 <p align="center"><img src="img/report.png" width="100%"
-alt="Two pages of the comparison report: the groups on a map, then temperature over time and at each station"></p>
-<p align="center"><em>The comparison report (PDF): every group of the class on one map, then each measurement over time and at each station, side by side.</em></p>
+alt="Left: the comparison report with the groups on a map. Right: a box day page with CO₂ over the day on air-quality bands"></p>
+<p align="center"><em>The PDF reports. Left: the comparison report, every group of the class on one map. Right: the box day, CO₂ over the whole day on coloured air-quality bands, with the highest and lowest values.</em></p>
 
 ---
 

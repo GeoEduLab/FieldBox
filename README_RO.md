@@ -39,8 +39,8 @@ deschide și aici, pe GitHub; săgeata ⬇ de lângă el îl descarcă.
 | valorile de acum și ultimele 50 de minute | stațiile traseului; o apăsare citește cutia, cu fotografie | traseul parcurs și punctele citite |
 
 <p align="center"><img src="img/report.png" width="100%"
-alt="Două pagini din raportul comparativ: grupele pe hartă, apoi temperatura în timp și la fiecare stație"></p>
-<p align="center"><em>Raportul comparativ (PDF): toate grupele clasei pe aceeași hartă, apoi fiecare mărime în timp și la fiecare stație, una lângă alta.</em></p>
+alt="Stânga: raportul comparativ, cu grupele pe hartă. Dreapta: pagina zilei cutiei, cu CO₂ pe toată ziua pe benzi de calitate a aerului"></p>
+<p align="center"><em>Rapoartele PDF. Stânga: raportul comparativ, toate grupele clasei pe aceeași hartă. Dreapta: ziua cutiei, CO₂ pe toată ziua pe benzi colorate de calitate a aerului, cu valorile cea mai mare și cea mai mică.</em></p>
 
 ---
 
