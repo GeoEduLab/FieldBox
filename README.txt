@@ -7,7 +7,6 @@ manuale/   Manual_utilizare_RO.pdf      manual de utilizare (română)
            User_manual_EN.pdf           user manual (English)
            Instalare_RO.pdf             ghid de instalare (română)
            Install_EN.pdf               installation guide (English)
-           *.docx                       aceleași manuale, editabile
 CHANGELOG.pdf                           ce s-a schimbat în fiecare versiune
 
 Noutăți în 0.8.0: fișierele de pe telefon sunt puse într-un folder pe zi (Documents/FieldBox/<zi>/);

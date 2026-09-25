@@ -25,7 +25,7 @@ merge, o fișă de teren pe o pagină) și un ghid de instalare.
 Arhiva conține aplicația, firmware-ul cutiei și cele patru manuale, toate din
 aceeași versiune.
 
-Doar manualele (PDF și Word, în română și în engleză, în aceleași foldere ca
+Doar manualele (PDF, în română și în engleză, în aceleași foldere ca
 în arhivă): **[FieldBox_docs_v0.8.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.8.0/FieldBox_docs_v0.8.0.zip)**. Fiecare PDF de mai jos se
 deschide și aici, pe GitHub; săgeata ⬇ de lângă el îl descarcă.
 
@@ -84,6 +84,5 @@ PDF: apăsați pe nume ca să-l citiți pe GitHub, sau pe ⬇ ca să-l descărca
 | Manualul de utilizare | [Manual_utilizare_RO.pdf](manuale/Manual_utilizare_RO.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/Manual_utilizare_RO.pdf) | [User_manual_EN.pdf](manuale/User_manual_EN.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/User_manual_EN.pdf) |
 | Ghidul de instalare | [Instalare_RO.pdf](manuale/Instalare_RO.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/Instalare_RO.pdf) | [Install_EN.pdf](manuale/Install_EN.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/Install_EN.pdf) |
 
-Aceleași manuale, ca fișiere Word editabile, sunt în folderul
-[manuale](manuale). Ce s-a schimbat de la o versiune la alta:
+Ce s-a schimbat de la o versiune la alta:
 [CHANGELOG.pdf](CHANGELOG.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/CHANGELOG.pdf).
