@@ -48,23 +48,8 @@ A newer version installs **over** the old one; the files on the phone stay.
 The app itself is in English. The same steps with a picture of every screen
 are in the [installation guide](manuale/Install_EN.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/Install_EN.pdf).
 
-**Connecting the box:** pair it once per phone and box, then connect from
-the app.
-
-<p align="center"><img src="img/connect_box.png" width="100%"
-alt="Pairing the box over Bluetooth and the first connection, in five steps"></p>
-
-1. Switch the box on (the LED blinks). On the phone open **Settings →
-   Bluetooth**; under **Available devices** the box shows as **BOX_xxxx** (the
-   code on its label). Tap it.
-2. At **"Bluetooth pairing request"** tap **Pair**. No PIN is asked; the
-   pairing is kept.
-3. In the app, tap **Boxes → Connect to a box**. The first time, Android asks
-   for **Nearby devices**: tap **Allow**.
-4. In **Choose a box**, tap **BOX_xxxx**.
-5. Within a few seconds the strip at the top turns green, **BOX_xxxx · link
-   good**, and the card shows the box's firmware and clock (set
-   automatically).
+Pairing the box over Bluetooth and the first connection are in the same guide
+(chapter 3, with a picture of every step).
 
 ## 2. The box firmware (for the technician)
 

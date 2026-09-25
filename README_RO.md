@@ -49,22 +49,8 @@ O versiune nouă se instalează **peste** cea veche; fișierele de pe telefon
 rămân. Aplicația este în engleză. Aceiași pași, cu poza fiecărui ecran, sunt
 în [ghidul de instalare](manuale/Instalare_RO.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/Instalare_RO.pdf).
 
-**Conectarea cutiei:** o asociați o dată, per telefon și cutie, apoi vă
-conectați din aplicație.
-
-<p align="center"><img src="img/conectare_cutie.png" width="100%"
-alt="Asocierea cutiei prin Bluetooth și prima conectare, în cinci pași"></p>
-
-1. Porniți cutia (LED-ul clipește). Pe telefon deschideți **Setări →
-   Bluetooth**; la **Available devices** cutia apare ca **BOX_xxxx** (codul de
-   pe eticheta ei). Apăsați pe ea.
-2. La **„Bluetooth pairing request”** apăsați **Pair**. Nu cere PIN;
-   asocierea rămâne salvată.
-3. În aplicație apăsați **Boxes → Connect to a box**. Prima dată Android cere
-   permisiunea **Nearby devices**: apăsați **Allow**.
-4. În fereastra **Choose a box** apăsați **BOX_xxxx**.
-5. În câteva secunde fâșia de sus devine verde, **BOX_xxxx · link good**, iar
-   cardul arată firmware-ul și ceasul cutiei (se potrivește singur).
+Asocierea cutiei prin Bluetooth și prima conectare sunt în același ghid
+(capitolul 3, cu poza fiecărui pas).
 
 ## 2. Firmware-ul cutiei (pentru tehnician)
 
