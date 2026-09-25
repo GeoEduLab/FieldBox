@@ -31,6 +31,19 @@ deschide și aici, pe GitHub; săgeata ⬇ de lângă el îl descarcă.
 
 ---
 
+## Cum arată
+
+| Live | Point | Map |
+|:---:|:---:|:---:|
+| <img src="img/live.png" width="240" alt="Tab-ul Live: cele cinci valori și ultimele 50 de minute de temperatură și CO₂"> | <img src="img/point.png" width="240" alt="Tab-ul Point: stațiile traseului, fiecare citită cu o apăsare"> | <img src="img/map.png" width="240" alt="Tab-ul Map: traseul și punctele citite la stații"> |
+| valorile de acum și ultimele 50 de minute | stațiile traseului; o apăsare citește cutia, cu fotografie | traseul parcurs și punctele citite |
+
+<p align="center"><img src="img/report.png" width="100%"
+alt="Două pagini din raportul comparativ: grupele pe hartă, apoi temperatura în timp și la fiecare stație"></p>
+<p align="center"><em>Raportul comparativ (PDF): toate grupele clasei pe aceeași hartă, apoi fiecare mărime în timp și la fiecare stație, una lângă alta.</em></p>
+
+---
+
 ## 1. Instalarea aplicației pe telefon
 
 Aplicația nu este în Play Store; se instalează din fișierul APK din folderul

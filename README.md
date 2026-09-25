@@ -30,6 +30,19 @@ opens here on GitHub; the ⬇ arrow next to it downloads it.
 
 ---
 
+## What it looks like
+
+| Live | Point | Map |
+|:---:|:---:|:---:|
+| <img src="img/live.png" width="240" alt="The Live tab: the five values and the last 50 minutes of temperature and CO₂"> | <img src="img/point.png" width="240" alt="The Point tab: the stations of the route, each read with one tap"> | <img src="img/map.png" width="240" alt="The Map tab: the route and the points read at the stations"> |
+| the values right now and the last 50 minutes | the stations of the route; one tap reads the box, with a photo | the route walked and the points read |
+
+<p align="center"><img src="img/report.png" width="100%"
+alt="Two pages of the comparison report: the groups on a map, then temperature over time and at each station"></p>
+<p align="center"><em>The comparison report (PDF): every group of the class on one map, then each measurement over time and at each station, side by side.</em></p>
+
+---
+
 ## 1. Installing the app on the phone
 
 The app is not on the Play Store; it is installed from the APK file in the
