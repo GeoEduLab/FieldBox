@@ -65,7 +65,7 @@ rămân. Aplicația este în engleză. Aceiași pași, cu poza fiecărui ecran, 
 Asocierea cutiei prin Bluetooth și prima conectare sunt în același ghid
 (capitolul 3, cu poza fiecărui pas).
 
-## 2. Firmware-ul cutiei (pentru tehnician)
+## 2. Firmware-ul cutiei
 
 Cutiile livrate nu au nevoie de nimic. Pentru o actualizare, deschideți
 `firmware/fieldbox_bt_v0_3/fieldbox_bt_v0_3.ino` în **Arduino IDE** și

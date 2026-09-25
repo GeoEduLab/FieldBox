@@ -64,7 +64,7 @@ are in the [installation guide](manuale/Install_EN.pdf) [⬇](https://github.com
 Pairing the box over Bluetooth and the first connection are in the same guide
 (chapter 3, with a picture of every step).
 
-## 2. The box firmware (for the technician)
+## 2. The box firmware
 
 Boxes as delivered need nothing. To update one, open
 `firmware/fieldbox_bt_v0_3/fieldbox_bt_v0_3.ino` in the **Arduino IDE** and
