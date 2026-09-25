@@ -24,6 +24,10 @@ field card) and an installation guide.
 The archive holds the app, the box firmware and the four manuals, all from
 the same version.
 
+The manuals alone (PDF and Word, English and Romanian, in the same folders as
+in the archive): **[FieldBox_docs_v0.8.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.8.0/FieldBox_docs_v0.8.0.zip)**. Every PDF below also
+opens here on GitHub; the ⬇ arrow next to it downloads it.
+
 ---
 
 ## 1. Installing the app on the phone
@@ -39,27 +43,47 @@ The app is not on the Play Store; it is installed from the APK file in the
    **More details → Install without scanning**). The app is simply not from
    the Play Store; that is all the warning means.
 4. On first launch allow the camera, **precise** location and notifications.
-5. Pair the box once in **Settings → Bluetooth** (it shows as `BOX_xxxx`, no
-   PIN), then in the app tap **Boxes → Connect to a box**.
 
 A newer version installs **over** the old one; the files on the phone stay.
-The app itself is in English.
+The app itself is in English. The same steps with a picture of every screen
+are in the [installation guide](manuale/Install_EN.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/Install_EN.pdf).
+
+**Connecting the box:** pair it once per phone and box, then connect from
+the app.
+
+<p align="center"><img src="img/connect_box.png" width="100%"
+alt="Pairing the box over Bluetooth and the first connection, in five steps"></p>
+
+1. Switch the box on (the LED blinks). On the phone open **Settings →
+   Bluetooth**; under **Available devices** the box shows as **BOX_xxxx** (the
+   code on its label). Tap it.
+2. At **"Bluetooth pairing request"** tap **Pair**. No PIN is asked; the
+   pairing is kept.
+3. In the app, tap **Boxes → Connect to a box**. The first time, Android asks
+   for **Nearby devices**: tap **Allow**.
+4. In **Choose a box**, tap **BOX_xxxx**.
+5. Within a few seconds the strip at the top turns green, **BOX_xxxx · link
+   good**, and the card shows the box's firmware and clock (set
+   automatically).
 
 ## 2. The box firmware (for the technician)
 
 Boxes as delivered need nothing. To update one, open
 `firmware/fieldbox_bt_v0_3/fieldbox_bt_v0_3.ino` in the **Arduino IDE** and
-upload it over USB. Chapter 5 of the installation guide walks through every
-click, with screenshots. Using esptool or the Flash Download Tool instead,
+upload it over USB. Chapter 5 of the [installation guide](manuale/Install_EN.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/Install_EN.pdf) walks
+through every click, with screenshots. Using esptool or the Flash Download Tool instead,
 write `firmware/fieldbox-fw-0.3.1-bt.bin` at address `0x0`. **Download the files from
 the box first:** the first start after an update clears its memory.
 
 ## 3. The manuals
 
+All of them in one archive: **[FieldBox_docs_v0.8.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.8.0/FieldBox_docs_v0.8.0.zip)**. A single
+PDF: click its name to read it on GitHub, or ⬇ to download it.
+
 | | English | Română |
 |---|---|---|
-| User manual | [User_manual_EN.pdf](manuale/User_manual_EN.pdf) | [Manual_utilizare_RO.pdf](manuale/Manual_utilizare_RO.pdf) |
-| Installation guide | [Install_EN.pdf](manuale/Install_EN.pdf) | [Instalare_RO.pdf](manuale/Instalare_RO.pdf) |
+| User manual | [User_manual_EN.pdf](manuale/User_manual_EN.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/User_manual_EN.pdf) | [Manual_utilizare_RO.pdf](manuale/Manual_utilizare_RO.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/Manual_utilizare_RO.pdf) |
+| Installation guide | [Install_EN.pdf](manuale/Install_EN.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/Install_EN.pdf) | [Instalare_RO.pdf](manuale/Instalare_RO.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/Instalare_RO.pdf) |
 
 The same manuals as editable Word files are in the [manuale](manuale) folder.
-What changed between versions: [CHANGELOG.pdf](CHANGELOG.pdf).
+What changed between versions: [CHANGELOG.pdf](CHANGELOG.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/CHANGELOG.pdf).
