@@ -4,7 +4,7 @@
 
 **English** · [Română](README_RO.md)
 
-**Version 0.8.0** · Android 10 or newer · box firmware 0.3.1-bt · manuals in English and Romanian
+**Version 0.9.0** · Android 10 or newer · box firmware 0.3.1-bt · manuals in English and Romanian
 
 ## For teachers
 
@@ -19,13 +19,13 @@ a PDF report of the day that the class can compare between groups.
 manual (every screen, the field day step by step, troubleshooting, a one-page
 field card) and an installation guide.
 
-### ⬇️ [Download Field Box 0.8.0 (a single ZIP file)](https://github.com/GeoEduLab/FieldBox/releases/download/v0.8.0/FieldBox_v0.8.0.zip)
+### ⬇️ [Download Field Box 0.9.0 (a single ZIP file)](https://github.com/GeoEduLab/FieldBox/releases/download/v0.9.0/FieldBox_v0.9.0.zip)
 
 The archive holds the app, the box firmware and the four manuals, all from
 the same version.
 
 The manuals alone (PDF, English and Romanian, in the same folders as
-in the archive): **[FieldBox_docs_v0.8.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.8.0/FieldBox_docs_v0.8.0.zip)**. Every PDF below also
+in the archive): **[FieldBox_docs_v0.9.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.9.0/FieldBox_docs_v0.9.0.zip)**. Every PDF below also
 opens here on GitHub; the ⬇ arrow next to it downloads it.
 
 ---
@@ -48,7 +48,7 @@ alt="Left: the comparison report with the groups on a map. Right: a box day page
 The app is not on the Play Store; it is installed from the APK file in the
 `app` folder.
 
-1. Copy `fieldbox-bt-0.8.0.apk` onto the phone (WhatsApp, a USB cable or
+1. Copy `fieldbox-bt-0.9.0.apk` onto the phone (WhatsApp, a USB cable or
    Google Drive) and tap it.
 2. If Android asks, allow installs **from this source**, then tap
    **Install**.
@@ -58,6 +58,8 @@ The app is not on the Play Store; it is installed from the APK file in the
 4. On first launch allow the camera, **precise** location and notifications.
 
 A newer version installs **over** the old one; the files on the phone stay.
+From 0.9.0 on, the app says so itself: when a new version is out, the Boxes
+tab shows it with a **Download** button.
 The app itself is in English. The same steps with a picture of every screen
 are in the [installation guide](manuale/Install_EN.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/Install_EN.pdf).
 
@@ -75,7 +77,7 @@ the box first:** the first start after an update clears its memory.
 
 ## 3. The manuals
 
-All of them in one archive: **[FieldBox_docs_v0.8.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.8.0/FieldBox_docs_v0.8.0.zip)**. A single
+All of them in one archive: **[FieldBox_docs_v0.9.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.9.0/FieldBox_docs_v0.9.0.zip)**. A single
 PDF: click its name to read it on GitHub, or ⬇ to download it.
 
 | | English | Română |

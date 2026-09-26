@@ -4,7 +4,7 @@
 
 [English](README.md) · **Română**
 
-**Versiunea 0.8.0** · Android 10 sau mai nou · firmware-ul cutiei 0.3.1-bt · manuale în română și în engleză
+**Versiunea 0.9.0** · Android 10 sau mai nou · firmware-ul cutiei 0.3.1-bt · manuale în română și în engleză
 
 ## Pentru profesori
 
@@ -20,13 +20,13 @@ pe care clasa îl poate compara între grupe.
 utilizare (fiecare ecran, ziua de teren pas cu pas, ce faceți când ceva nu
 merge, o fișă de teren pe o pagină) și un ghid de instalare.
 
-### ⬇️ [Descărcați Field Box 0.8.0 (un singur fișier ZIP)](https://github.com/GeoEduLab/FieldBox/releases/download/v0.8.0/FieldBox_v0.8.0.zip)
+### ⬇️ [Descărcați Field Box 0.9.0 (un singur fișier ZIP)](https://github.com/GeoEduLab/FieldBox/releases/download/v0.9.0/FieldBox_v0.9.0.zip)
 
 Arhiva conține aplicația, firmware-ul cutiei și cele patru manuale, toate din
 aceeași versiune.
 
 Doar manualele (PDF, în română și în engleză, în aceleași foldere ca
-în arhivă): **[FieldBox_docs_v0.8.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.8.0/FieldBox_docs_v0.8.0.zip)**. Fiecare PDF de mai jos se
+în arhivă): **[FieldBox_docs_v0.9.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.9.0/FieldBox_docs_v0.9.0.zip)**. Fiecare PDF de mai jos se
 deschide și aici, pe GitHub; săgeata ⬇ de lângă el îl descarcă.
 
 ---
@@ -49,7 +49,7 @@ alt="Stânga: raportul comparativ, cu grupele pe hartă. Dreapta: pagina zilei c
 Aplicația nu este în Play Store; se instalează din fișierul APK din folderul
 `app`.
 
-1. Aduceți `fieldbox-bt-0.8.0.apk` pe telefon (WhatsApp, cablu USB sau
+1. Aduceți `fieldbox-bt-0.9.0.apk` pe telefon (WhatsApp, cablu USB sau
    Google Drive) și apăsați pe el.
 2. Dacă Android cere, permiteți instalarea **din această sursă** („Allow from
    this source”), apoi apăsați **Install**.
@@ -59,7 +59,8 @@ Aplicația nu este în Play Store; se instalează din fișierul APK din folderul
 4. La prima pornire permiteți camera, locația **precisă** și notificările.
 
 O versiune nouă se instalează **peste** cea veche; fișierele de pe telefon
-rămân. Aplicația este în engleză. Aceiași pași, cu poza fiecărui ecran, sunt
+rămân. Din 0.9.0, aplicația o anunță singură: când apare o versiune nouă,
+tab-ul Boxes o arată, cu un buton **Download**. Aplicația este în engleză. Aceiași pași, cu poza fiecărui ecran, sunt
 în [ghidul de instalare](manuale/Instalare_RO.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/Instalare_RO.pdf).
 
 Asocierea cutiei prin Bluetooth și prima conectare sunt în același ghid
@@ -76,7 +77,7 @@ fișierele de pe cutie:** prima pornire după actualizare îi golește memoria.
 
 ## 3. Manualele
 
-Toate într-o singură arhivă: **[FieldBox_docs_v0.8.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.8.0/FieldBox_docs_v0.8.0.zip)**. Un singur
+Toate într-o singură arhivă: **[FieldBox_docs_v0.9.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.9.0/FieldBox_docs_v0.9.0.zip)**. Un singur
 PDF: apăsați pe nume ca să-l citiți pe GitHub, sau pe ⬇ ca să-l descărcați.
 
 | | Română | English |
