@@ -13,7 +13,16 @@
  * Wire contract: docs/superpowers/specs/2026-08-02-fieldbox-bt-design.md
  * in the fieldbox repo.
  *
- * Sensors : BME280 (T/H/P) · SCD41 (CO₂, ~5 s cycle) · VEML7700 (lux)
+ * Sensors : BME280 (T/H/P) · SCD41 (CO₂, ~5 s cycle) · VEML7700 (lux,
+ *           auto-ranged from 0.4.0: ~0.004 lx to direct sunlight)
+ *           and, from 0.4.0, the optional sensors of the EASE MagicBox
+ *           firmware 2.4.4, each found at boot or left out ("not fitted"
+ *           on Serial, nothing blocks): BH1750 (lux, when no VEML7700),
+ *           SGP30 (TVOC/eCO2), SGP41 (VOC/NOx index), BMV080 (PM1/PM2.5/
+ *           PM10, also on crossed SDA/SCL), STEMMA soil sensor (seesaw).
+ *           Their values travel only in the "live" reply, as extra keys an
+ *           older app ignores; the CSV files on the box keep their 13
+ *           columns, because the app up to 0.9.0 rejects any other count.
  * Wiring  : SDA=GPIO21  SCL=GPIO22  VCC=3.3V  GND=GND · I2C 100 kHz
  * Board   : ESP32 Dev Module. Ships its own partitions.csv (app 1.375 MB /
  *           LittleFS 2.56 MB). The ESP32 core (3.x) copies a partitions.csv
@@ -23,7 +32,10 @@
  *           sets the size check, and the default 1.2 MB one would refuse the
  *           app long before it outgrows its real 1.375 MB slot (0.3.1: 1.19 MB).
  * Libraries: Adafruit BME280 · Adafruit VEML7700 · Adafruit Unified Sensor
- *            SparkFun SCD4x  (BluetoothSerial/LittleFS: ESP32 core)
+ *            SparkFun SCD4x · BH1750 (claws) · Adafruit seesaw ·
+ *            Adafruit SGP30 · Sensirion Gas Index Algorithm ·
+ *            DFRobot_BMV080 (ZIP from github.com/DFRobot/DFRobot_BMV080)
+ *            (BluetoothSerial/LittleFS/Preferences: ESP32 core)
  *
  * Status LED (GPIO2): solid 2 s at boot = sensors OK · 500 ms blink =
  * recording · 100 ms blink = storage full.
@@ -43,13 +55,21 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include <SparkFun_SCD4x_Arduino_Library.h>
+#include <BH1750.h>
+#include <Adafruit_seesaw.h>
+#include <Adafruit_SGP30.h>
+#include <DFRobot_BMV080.h>
+#undef ERR_OK   // DFRobot's macro clashes with lwip's err_enum_t
+#include <VOCGasIndexAlgorithm.h>
+#include <NOxGasIndexAlgorithm.h>
+#include <Preferences.h>
 #include "BluetoothSerial.h"
 #include <esp_bt.h>          // esp_bredr_tx_power_set
 #include "esp32-hal-bt.h"    // btStart
 
 // Paired with the Field Box BT app: bump the two together whenever the BT
 // wire contract changes.
-#define FW_VERSION  "0.3.1-bt"
+#define FW_VERSION  "0.4.1-bt"
 #define BT_PREFIX   "BOX_"
 #define LED_PIN     2
 #define SLOW_MS     1000      // slow sensors at 1 Hz (CSV rows every LOG_MS)
@@ -72,6 +92,42 @@ Adafruit_VEML7700 veml;  bool veml_ok  = false;
 Adafruit_BME280   bme;   bool bme_ok   = false;
 SCD4x             scd41; bool scd41_ok = false;
 
+// Optional sensors (0.4.0), driven as in the EASE MagicBox firmware 2.4.4.
+// Each is probed once at boot; absent = left out, nothing waits on it.
+BH1750 bh;               bool bh_ok    = false;   // lux, only without a VEML7700
+static const uint8_t SOIL_ADDRS[] = {0x36, 0x37, 0x38, 0x39};
+Adafruit_seesaw   soil;  bool soil_ok  = false;
+Adafruit_SGP30    sgp;   bool sgp_ok   = false;
+#define SGP_WARMUP_MS     15000UL
+#define SGP_HUM_MS        60000UL
+#define SGP_BASE_FIRST_MS (12UL * 3600000UL)
+#define SGP_BASE_EVERY_MS ( 1UL * 3600000UL)
+#define HW_NAMESPACE      "fieldbox_hw"
+static unsigned long t_sgp_start = 0, t_sgp_hum = 0, t_sgp_base = 0;
+static uint8_t sgp_fail = 0;
+
+#define SGP41_ADDR        0x59
+#define SGP41_CMD_COND    0x2612
+#define SGP41_CMD_MEAS    0x2619
+#define SGP41_CMD_TEST    0x280E
+#define SGP41_CMD_SERIAL  0x3682
+#define SGP41_COND_S      10
+VOCGasIndexAlgorithm voc_algo;
+NOxGasIndexAlgorithm nox_algo;
+bool sgp41_ok = false;
+static uint8_t sgp41_cond = SGP41_COND_S, sgp41_pending = 0, sgp41_fail = 0;
+
+static const uint8_t BMV_ADDRS[] = {0x57, 0x56, 0x55, 0x54};
+#define BMV_SERVE_MS     200UL
+#define BMV_WARMUP_MS  15000UL
+#define BMV_STALE_MS    3000UL
+#define BMV_DEAD_MS    30000UL
+DFRobot_BMV080_I2C* bmv = nullptr;
+bool    bmv_ok = false, bmv_swapped = false;
+uint8_t bmv_addr = 0;
+static unsigned long t_bmv_start = 0, t_bmv_serve = 0, t_bmv_data = 0;
+static struct { float pm1, pm25, pm10; bool obstructed; } c_bmv = {0, 0, 0, false};
+
 // Last valid values; *_valid = false ⇒ empty cell in CSV.
 struct Readings {
   bool  bme_valid = false, scd_valid = false, veml_valid = false;
@@ -80,6 +136,18 @@ struct Readings {
   float t_scd = NAN, h_scd = NAN;
   float lux = NAN;
 } cur;
+
+// 0.4.0 optional sensors: live reply only, never in the CSV files. Kept out
+// of Readings on purpose: the 720-row pre-sync ring copies Readings, and
+// these fields there would cost 29 KB of RAM the Bluetooth stack needs.
+struct ExtraReadings {
+  bool  pm_valid = false, pm_obs = false, voc_valid = false, nox_valid = false;
+  bool  sgp30_valid = false, soil_valid = false;
+  int   pm1 = 0, pm25 = 0, pm10 = 0;
+  int32_t voc = 0, nox = 0;
+  uint16_t tvoc = 0, eco2 = 0, soil = 0;
+  float soil_t = NAN;
+} ext;
 
 // Rows sampled before the phone synced the clock: kept with their uptime and
 // written with real timestamps the moment the first /api/time arrives.
@@ -97,6 +165,15 @@ static bool time_synced = false;
 static time_t boot_epoch = 0;
 static char station[24] = "P1";
 static char lat_s[16] = "", lon_s[16] = "";
+
+// Bosch's precompiled BMV080 driver needs a large stack on the loop task
+// (the default 8 KB crashes); DFRobot's examples use 60 KB. Measured on
+// BOX_A445 (25.10.2026, BME280 + SGP41 + BMV080 continuous, BT up): the loop
+// used at most ~12.5 KB, and 60 KB left only 8 KB of heap next to BT Classic
+// -> crash loop at boot. 28 KB = 2x the measured peak. Placed here, after
+// the types: the macro defines a function, and the IDE inserts its generated
+// prototypes above the first function of the sketch.
+SET_LOOP_TASK_STACK_SIZE(28 * 1024);
 
 static void fmtT(char* buf, size_t n, const char* fmt) {
   time_t t = time(nullptr);
@@ -425,7 +502,7 @@ static String liveJson() {
   char d[12] = "", t2[10] = "--:--:--";
   if (time_synced) { fmtDate(d, sizeof d); fmtTime(t2, sizeof t2); }
   String o;
-  o.reserve(512);
+  o.reserve(900);
   o += "{\"synced\":";  o += time_synced ? "true" : "false";
   o += ",\"rec\":";     o += recording ? "true" : "false";
   o += ",\"full\":";    o += storage_full ? "true" : "false";
@@ -449,6 +526,24 @@ static String liveJson() {
   o += ",\"bme\":";   o += bme_ok ? "true" : "false";
   o += ",\"scd\":";   o += scd41_ok ? "true" : "false";
   o += ",\"veml\":";  o += veml_ok ? "true" : "false";
+  // 0.4.0: optional sensors. Flags always present; values null when the
+  // sensor is absent, warming up or (PM) blocked. "pm_obs" true = the
+  // BMV080 sees something static in front of its laser.
+  o += ",\"bh\":";    o += bh_ok ? "true" : "false";
+  o += ",\"pm\":";    o += bmv_ok ? "true" : "false";
+  o += ",\"pm_obs\":"; o += ext.pm_obs ? "true" : "false";
+  o += ",\"pm1\":";   if (ext.pm_valid) o += String(ext.pm1);  else o += "null";
+  o += ",\"pm25\":";  if (ext.pm_valid) o += String(ext.pm25); else o += "null";
+  o += ",\"pm10\":";  if (ext.pm_valid) o += String(ext.pm10); else o += "null";
+  o += ",\"sgp41\":"; o += sgp41_ok ? "true" : "false";
+  o += ",\"voc\":";   if (ext.voc_valid) o += String(ext.voc); else o += "null";
+  o += ",\"nox\":";   if (ext.nox_valid) o += String(ext.nox); else o += "null";
+  o += ",\"sgp30\":"; o += sgp_ok ? "true" : "false";
+  o += ",\"tvoc\":";  if (ext.sgp30_valid) o += String(ext.tvoc); else o += "null";
+  o += ",\"eco2\":";  if (ext.sgp30_valid) o += String(ext.eco2); else o += "null";
+  o += ",\"soil_ok\":"; o += soil_ok ? "true" : "false";
+  o += ",\"soil\":";  if (ext.soil_valid) o += String(ext.soil); else o += "null";
+  o += ",\"soil_t\":"; appendNum(o, ext.soil_t, 1, ext.soil_valid);
   o += ",\"fw\":\"" FW_VERSION "\",\"id\":\""; o += DEVICE_ID; o += "\"";
   o += "}";
   return o;
@@ -693,18 +788,149 @@ static void ledLoop(unsigned long now) {
 // ── I2C bus stuck recovery (9-clock method, from fw 2.2.4) ─────
 // SCD41 in clock-stretching can hold SDA low across a soft reset;
 // we pulse SCL manually until SDA releases, then generate a STOP.
-static void i2cBusUnstick() {
-  pinMode(21, INPUT_PULLUP);
-  pinMode(22, OUTPUT);
+static void i2cBusUnstickPins(uint8_t sda, uint8_t scl) {
+  pinMode(sda, INPUT_PULLUP);
+  pinMode(scl, OUTPUT);
   for (int i = 0; i < 9; i++) {
-    digitalWrite(22, HIGH); delayMicroseconds(5);
-    digitalWrite(22, LOW);  delayMicroseconds(5);
-    if (digitalRead(21)) break;
+    digitalWrite(scl, HIGH); delayMicroseconds(5);
+    digitalWrite(scl, LOW);  delayMicroseconds(5);
+    if (digitalRead(sda)) break;
   }
-  pinMode(21, OUTPUT);
-  digitalWrite(21, LOW);  delayMicroseconds(5);
-  digitalWrite(22, HIGH); delayMicroseconds(5);
-  digitalWrite(21, HIGH); delayMicroseconds(5);
+  pinMode(sda, OUTPUT);
+  digitalWrite(sda, LOW);  delayMicroseconds(5);
+  digitalWrite(scl, HIGH); delayMicroseconds(5);
+  digitalWrite(sda, HIGH); delayMicroseconds(5);
+}
+static void i2cBusUnstick() { i2cBusUnstickPins(21, 22); }
+
+// BMV080 wired with SDA and SCL crossed (EASE 2.4.3): the bus is turned
+// round for each driver call and back; the STOP on the way back clears
+// anything the other sensors took for a start.
+static void bmvBus(bool crossed) {
+  Wire.end();
+  if (crossed) { i2cBusUnstickPins(22, 21); Wire.begin(22, 21); }
+  else         { i2cBusUnstickPins(21, 22); Wire.begin(21, 22); }
+  Wire.setClock(100000);
+}
+static uint8_t bmvProbe() {
+  for (uint8_t a : BMV_ADDRS) {
+    Wire.beginTransmission(a);
+    if (Wire.endTransmission() == 0) return a;
+  }
+  return 0;
+}
+
+// SGP41: plain Wire, Sensirion framing (word + CRC-8, poly 0x31, init 0xFF).
+static uint8_t sgp41Crc(uint16_t w) {
+  uint8_t crc = 0xFF, b[2] = { (uint8_t)(w >> 8), (uint8_t)w };
+  for (uint8_t i = 0; i < 2; i++) {
+    crc ^= b[i];
+    for (uint8_t k = 0; k < 8; k++)
+      crc = (crc & 0x80) ? (uint8_t)((crc << 1) ^ 0x31) : (uint8_t)(crc << 1);
+  }
+  return crc;
+}
+static bool sgp41Send(uint16_t cmd, const uint16_t* args, uint8_t n) {
+  Wire.beginTransmission(SGP41_ADDR);
+  Wire.write((uint8_t)(cmd >> 8)); Wire.write((uint8_t)cmd);
+  for (uint8_t i = 0; i < n; i++) {
+    Wire.write((uint8_t)(args[i] >> 8)); Wire.write((uint8_t)args[i]);
+    Wire.write(sgp41Crc(args[i]));
+  }
+  return Wire.endTransmission() == 0;
+}
+static bool sgp41Read(uint16_t* out, uint8_t n) {
+  uint8_t len = n * 3;
+  if (Wire.requestFrom((uint8_t)SGP41_ADDR, len, (uint8_t)true) != len) return false;
+  for (uint8_t i = 0; i < n; i++) {
+    uint8_t hi = Wire.read(), lo = Wire.read(), c = Wire.read();
+    out[i] = (uint16_t)(hi << 8 | lo);
+    if (sgp41Crc(out[i]) != c) return false;
+  }
+  return true;
+}
+// T/RH ticks for compensation; 50 %RH / 25 °C when no humidity sensor.
+static void sgp41Comp(float t, float h, uint16_t comp[2]) {
+  if (isnan(t) || isnan(h)) { comp[0] = 0x8000; comp[1] = 0x6666; return; }
+  h = constrain(h, 0.0f, 100.0f);
+  t = constrain(t, -45.0f, 130.0f);
+  comp[0] = (uint16_t)lroundf(h * 65535.0f / 100.0f);
+  comp[1] = (uint16_t)lroundf((t + 45.0f) * 65535.0f / 175.0f);
+}
+
+// ── VEML7700: non-blocking auto-range (from MagicBox EASE 2.4.4) ──
+// With the fixed gain 1 / 100 ms of 0.3.x the lux saturated at ~3.8 klx,
+// i.e. in any daylight outdoors. This ladder walks gain and integration
+// time from loop() with short register reads only (the library's own auto
+// mode calls delay() for every step, up to seconds in the dark, which would
+// stall the Bluetooth link). Resolution in lux/count =
+// 0.0036 · (800 ms / IT) · (2 / gain), Vishay app note 84323.
+struct VemlRung { uint8_t gain; uint8_t it; uint16_t it_ms; float res; };
+static const VemlRung VEML_LADDER[] = {
+  { VEML7700_GAIN_1_8, VEML7700_IT_25MS,   25, 1.8432f },  // direct sun
+  { VEML7700_GAIN_1_8, VEML7700_IT_50MS,   50, 0.9216f },
+  { VEML7700_GAIN_1_8, VEML7700_IT_100MS, 100, 0.4608f },
+  { VEML7700_GAIN_1_4, VEML7700_IT_100MS, 100, 0.2304f },
+  { VEML7700_GAIN_1,   VEML7700_IT_100MS, 100, 0.0576f },  // = fixed setting of 0.3.x
+  { VEML7700_GAIN_2,   VEML7700_IT_100MS, 100, 0.0288f },
+  { VEML7700_GAIN_2,   VEML7700_IT_200MS, 200, 0.0144f },
+  { VEML7700_GAIN_2,   VEML7700_IT_400MS, 400, 0.0072f },
+  { VEML7700_GAIN_2,   VEML7700_IT_800MS, 800, 0.0036f },  // near darkness
+};
+#define VEML_RUNGS    (sizeof(VEML_LADDER) / sizeof(VEML_LADDER[0]))
+#define VEML_START    4
+#define VEML_HIGH     50000      // counts: above → one rung less sensitive
+#define VEML_SAT      65000      // saturated → two rungs at once
+#define VEML_LOW      1000       // below → more sensitive
+#define VEML_AIM      20000      // counts to aim for when stepping up
+#define VEML_LUX_MAX  150000.0f
+static uint8_t       veml_rung = VEML_START;
+static unsigned long veml_t_ready = 0, c_veml_at = 0;
+static float         c_veml_lux = 0;
+static bool          c_veml_ok = false;
+
+static void vemlSetRung(uint8_t rung, unsigned long now) {
+  uint16_t old_ms = VEML_LADDER[veml_rung].it_ms;
+  veml_rung = rung;
+  veml.setGain(VEML_LADDER[rung].gain);
+  veml.setIntegrationTime(VEML_LADDER[rung].it, false);   // false: no delay()
+  veml_t_ready = now + old_ms + 2UL * VEML_LADDER[rung].it_ms;
+}
+
+// Vishay non-linearity correction, trusted up to 10 klx; above, its tangent
+// (the quartic explodes past ~20 klx). Same as MagicBox 2.2.5+.
+#define VEML_POLY_KNEE 10000.0f
+static float vemlPoly(float lux) {
+  return (((6.0135e-13f * lux - 9.3924e-9f) * lux + 8.1488e-5f) * lux + 1.0023f) * lux;
+}
+static float vemlCorrect(float lux) {
+  if (lux <= VEML_POLY_KNEE) return vemlPoly(lux);
+  const float k = VEML_POLY_KNEE;
+  const float slope = ((4 * 6.0135e-13f * k - 3 * 9.3924e-9f) * k + 2 * 8.1488e-5f) * k + 1.0023f;
+  return vemlPoly(k) + slope * (lux - k);
+}
+
+static void vemlService(unsigned long now) {
+  if ((long)(now - veml_t_ready) < 0) return;
+  uint16_t als = veml.readALS(false);
+  const VemlRung& r = VEML_LADDER[veml_rung];
+  if (als > VEML_HIGH && veml_rung > 0) {
+    uint8_t down = (als >= VEML_SAT && veml_rung >= 2) ? 2 : 1;
+    vemlSetRung(veml_rung - down, now);
+    return;
+  }
+  if (als < VEML_LOW && veml_rung < VEML_RUNGS - 1) {
+    float lin = als * r.res;
+    uint8_t up = veml_rung + 1;
+    while (up + 1 < VEML_RUNGS && lin / VEML_LADDER[up + 1].res <= VEML_AIM) up++;
+    vemlSetRung(up, now);
+    return;
+  }
+  float lux = vemlCorrect(als * r.res);
+  c_veml_lux = lux > VEML_LUX_MAX ? VEML_LUX_MAX : lux;
+  c_veml_ok = true;
+  c_veml_at = now;
+  veml_t_ready = now + r.it_ms;
 }
 
 static void sensorsInit() {
@@ -715,8 +941,7 @@ static void sensorsInit() {
   veml_ok = veml.begin();
   for (int r = 0; !veml_ok && r < 2; r++) { delay(50); veml_ok = veml.begin(); }
   if (veml_ok) {
-    veml.setGain(VEML7700_GAIN_1);
-    veml.setIntegrationTime(VEML7700_IT_100MS);
+    vemlSetRung(VEML_START, millis());
   }
   Serial.printf("[VEML7700] %s\n", veml_ok ? "OK" : "FAIL");
 
@@ -737,6 +962,82 @@ static void sensorsInit() {
   scd41_ok = scd41.begin(Wire);
   if (scd41_ok) scd41.startPeriodicMeasurement();
   Serial.printf("[SCD41] %s\n", scd41_ok ? "OK" : "FAIL");
+  optionalInit();
+}
+
+// 0.4.0: the EASE sensors, each probed once; "not fitted" never blocks.
+static void optionalInit() {
+  if (!veml_ok) {
+    for (uint8_t a : {(uint8_t)0x23, (uint8_t)0x5C}) {
+      Wire.beginTransmission(a);
+      if (Wire.endTransmission() == 0 && bh.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, a, &Wire)) {
+        bh_ok = true; break;
+      }
+    }
+    Serial.printf("[BH1750] %s\n", bh_ok ? "OK" : "not fitted");
+  }
+
+  // A quick probe first: seesaw.begin() spends ~100 ms per silent address.
+  for (uint8_t a : SOIL_ADDRS) {
+    Wire.beginTransmission(a);
+    if (Wire.endTransmission() != 0) continue;
+    if (soil.begin(a)) { soil_ok = true; Serial.printf("[SOIL] OK at 0x%02X\n", a); break; }
+  }
+  if (!soil_ok) Serial.println("[SOIL] not fitted");
+
+  Wire.beginTransmission(0x58);
+  if (Wire.endTransmission() == 0) sgp_ok = sgp.begin(&Wire);
+  if (sgp_ok) {
+    t_sgp_start = millis();
+    Preferences hw;
+    hw.begin(HW_NAMESPACE, true);
+    uint16_t be = hw.getUShort("sgp_eco2", 0), bt = hw.getUShort("sgp_tvoc", 0);
+    hw.end();
+    bool restored = be && bt && sgp.setIAQBaseline(be, bt);
+    Serial.printf("[SGP30] OK%s\n", restored ? ", baseline restored" : ", no baseline yet");
+  } else {
+    Serial.println("[SGP30] not fitted");
+  }
+
+  {
+    uint16_t sn[3], tr = 0;
+    bool found = sgp41Send(SGP41_CMD_SERIAL, nullptr, 0);
+    if (found) { delay(2); found = sgp41Read(sn, 3); }
+    if (found) {
+      bool test = sgp41Send(SGP41_CMD_TEST, nullptr, 0);
+      if (test) { delay(330); test = sgp41Read(&tr, 1); }
+      sgp41_ok = test && (tr & 0x0F) == 0;
+      Serial.printf("[SGP41] %s\n", sgp41_ok ? "OK, self-test passed" : "self-test FAILED: SGP41 off");
+    } else {
+      Serial.println("[SGP41] not fitted");
+    }
+  }
+
+  bmv_addr = bmvProbe();
+  if (!bmv_addr) {                       // a crossed cable answers only this way
+    bmvBus(true);
+    bmv_addr = bmvProbe();
+    bmv_swapped = bmv_addr != 0;
+    if (!bmv_swapped) bmvBus(false);
+  }
+  if (bmv_addr) {
+    bmv = new DFRobot_BMV080_I2C(&Wire, bmv_addr);
+    uint16_t st = bmv->openBmv080();
+    if (st == 0) {
+      bmv->setObstructionDetection(true);
+      bmv->setDoVibrationFiltering(true);       // the box rides in a backpack
+      bmv->setMeasurementAlgorithm(BALANCED);
+      bmv_ok = bmv->setBmv080Mode(CONTINUOUS_MODE) == 0;
+    }
+    if (!bmv_ok) Serial.printf("[BMV080] open/start failed at 0x%02X\n", bmv_addr);
+  }
+  if (bmv_swapped) bmvBus(false);
+  if (bmv_ok) {
+    t_bmv_start = t_bmv_data = millis();
+    Serial.printf("[BMV080] OK at 0x%02X%s\n", bmv_addr, bmv_swapped ? " (SDA/SCL swapped)" : "");
+  } else if (!bmv_addr) {
+    Serial.println("[BMV080] not fitted");
+  }
 }
 
 static void readSlowSensors() {
@@ -756,13 +1057,132 @@ static void readSlowSensors() {
     }
   }
   if (veml_ok) {
-    float lx = veml.readLux();
-    if (isnan(lx) || lx < 0 || lx > 200000) {   // impossible reading = sensor down
-      cur.veml_valid = false;
-    } else {
-      cur.lux = roundf(lx * 10) / 10.0f;
+    // Auto-ranged in vemlService(); here only the last valid result, kept
+    // at most 3 s (a sensor that stops answering leaves the cell empty).
+    if (c_veml_ok && millis() - c_veml_at <= 3000) {
+      cur.lux = roundf(c_veml_lux * 10) / 10.0f;
       cur.veml_valid = true;
+    } else {
+      cur.veml_valid = false;
     }
+  } else if (bh_ok) {
+    // Same lux column: a box has one light sensor or the other.
+    float lx = bh.readLightLevel();
+    if (lx < 0 || lx > 120000) cur.veml_valid = false;
+    else { cur.lux = roundf(lx * 10) / 10.0f; cur.veml_valid = true; }
+  }
+  readOptional1Hz();
+}
+
+// The 1 Hz part of the optional sensors (SGP30 and SGP41 want exactly one
+// sample per second; soil is cheap). A sensor that fails 10 s in a row is
+// switched off until the next reset.
+static void readOptional1Hz() {
+  unsigned long now = millis();
+  float ht = cur.bme_valid ? cur.T : (cur.scd_valid ? cur.t_scd : NAN);
+  float hh = cur.bme_valid ? cur.H : (cur.scd_valid ? cur.h_scd : NAN);
+
+  if (soil_ok) {
+    static uint8_t soil_fail = 0;
+    uint16_t c = soil.touchRead(0);
+    if (c != 65535 && c < 4096) {
+      soil_fail = 0;
+      ext.soil = c;
+      float st = soil.getTemp();
+      ext.soil_t = (st > -40 && st < 85) ? roundf(st * 10) / 10.0f : NAN;
+      ext.soil_valid = true;
+    } else {
+      ext.soil_valid = false;
+      if (++soil_fail >= 10) { soil_ok = false; Serial.println("[SOIL] no answer 10 s: off"); }
+    }
+  }
+
+  if (sgp_ok) {
+    if ((now - t_sgp_hum >= SGP_HUM_MS || t_sgp_hum == 0) && !isnan(ht)) {
+      float ah = 216.7f * (hh / 100.0f * 6.112f * expf(17.62f * ht / (243.12f + ht)) / (273.15f + ht));
+      sgp.setHumidity((uint32_t)(ah * 1000.0f));
+      t_sgp_hum = now;
+    }
+    if (sgp.IAQmeasure()) {
+      sgp_fail = 0;
+      ext.sgp30_valid = now - t_sgp_start >= SGP_WARMUP_MS;
+      ext.tvoc = sgp.TVOC; ext.eco2 = sgp.eCO2;
+      unsigned long run = now - t_sgp_start;
+      if (run >= SGP_BASE_FIRST_MS && (t_sgp_base == 0 || now - t_sgp_base >= SGP_BASE_EVERY_MS)) {
+        uint16_t be, bt;
+        if (sgp.getIAQBaseline(&be, &bt)) {
+          Preferences hw;
+          hw.begin(HW_NAMESPACE, false);
+          hw.putUShort("sgp_eco2", be); hw.putUShort("sgp_tvoc", bt);
+          hw.end();
+        }
+        t_sgp_base = now;
+      }
+    } else {
+      ext.sgp30_valid = false;
+      if (++sgp_fail >= 10) { sgp_ok = false; Serial.println("[SGP30] no answer 10 s: off"); }
+    }
+  }
+
+  if (sgp41_ok) {
+    // Read last second's result (ready after 50 ms), then send the next
+    // command: nothing waits. Index 0 = algorithm still starting (~45 s).
+    if (sgp41_pending) {
+      uint16_t raw[2];
+      if (sgp41Read(raw, sgp41_pending == 2 ? 2 : 1)) {
+        sgp41_fail = 0;
+        int32_t vi = voc_algo.process(raw[0]);
+        if (sgp41_pending == 2) {
+          int32_t ni = nox_algo.process(raw[1]);
+          ext.voc = vi; ext.voc_valid = vi > 0;
+          ext.nox = ni; ext.nox_valid = ni > 0;
+        }
+      } else if (++sgp41_fail >= 10) {
+        sgp41_ok = false; ext.voc_valid = ext.nox_valid = false;
+        Serial.println("[SGP41] no answer 10 s: off");
+      }
+    }
+    if (sgp41_ok) {
+      uint16_t comp[2];
+      sgp41Comp(ht, hh, comp);
+      bool cond = sgp41_cond > 0;
+      if (sgp41Send(cond ? SGP41_CMD_COND : SGP41_CMD_MEAS, comp, 2)) {
+        sgp41_pending = cond ? 1 : 2;
+        if (cond) sgp41_cond--;
+      } else {
+        sgp41_pending = 0;
+        if (++sgp41_fail >= 10) { sgp41_ok = false; ext.voc_valid = ext.nox_valid = false; }
+      }
+    }
+  }
+
+  // PM: the cached driver result, sent only after warm-up and while fresh.
+  bool fresh = bmv_ok && now - t_bmv_start >= BMV_WARMUP_MS && now - t_bmv_data <= BMV_STALE_MS;
+  ext.pm_obs   = fresh && c_bmv.obstructed;
+  ext.pm_valid = fresh && !c_bmv.obstructed;
+  if (ext.pm_valid) {
+    ext.pm1 = (int)lroundf(c_bmv.pm1); ext.pm25 = (int)lroundf(c_bmv.pm25); ext.pm10 = (int)lroundf(c_bmv.pm10);
+  }
+}
+
+// BMV080 driver served every 200 ms (it reads its FIFO here, 100-200 ms).
+static void serveBmv() {
+  unsigned long now = millis();
+  if (!bmv_ok || now - t_bmv_serve < BMV_SERVE_MS) return;
+  t_bmv_serve = now;
+  float p1, p25, p10;
+  if (bmv_swapped) bmvBus(true);
+  bool got = bmv->getBmv080Data(&p1, &p25, &p10);
+  bool obs = got && bmv->ifObstructed();
+  if (bmv_swapped) bmvBus(false);
+  if (got) {
+    t_bmv_data = now;
+    if (obs != c_bmv.obstructed)
+      Serial.println(obs ? "[BMV080] something static in front of the laser" : "[BMV080] view clear again");
+    c_bmv = { p1, p25, p10, obs };
+  } else if (now - t_bmv_data >= BMV_DEAD_MS) {
+    bmv_ok = false;
+    Serial.println("[BMV080] no result for 30 s: PM sensor off");
   }
 }
 
@@ -819,7 +1239,7 @@ void setup() {
   delay(200);
   snprintf(DEVICE_ID, sizeof(DEVICE_ID), BT_PREFIX "%04X",
            (uint16_t)(ESP.getEfuseMac() >> 32));
-  Serial.printf("[BOOT] Field Box fw v%s (%s)\n", FW_VERSION, __DATE__);
+  Serial.printf("[BOOT] Field Box %s fw v%s (%s)\n", DEVICE_ID, FW_VERSION, __DATE__);
   // tells us instantly whether a "dead box" in the field was a brownout, a crash,
   // or a normal power-up — no more guessing after the fact
   static const char* RST[] = {"unknown", "power-on", "external", "software",
@@ -844,6 +1264,11 @@ void setup() {
   // default), so the controller is started here first; begin() sees
   // btStarted() and skips its own start. The read-back proves it in the
   // boot log: max=7 is ESP_PWR_LVL_P9.
+  // 0.4.0: the box speaks BT Classic (SPP) only, never BLE. Releasing the
+  // BLE half of the controller before it starts gives that RAM back to the
+  // heap; with the BMV080's 60 KB loop stack the first bench run had only
+  // 8 KB free and crashed in a 2 s loop (25.10.2026).
+  esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
   btStart();
   esp_err_t pw = esp_bredr_tx_power_set(ESP_PWR_LVL_P9, ESP_PWR_LVL_P9);
   SerialBT.begin(DEVICE_ID);   // SPP, discoverable + connectable
@@ -856,7 +1281,23 @@ void setup() {
   }
 
   sensorsInit();
-  sensors_ok = bme_ok || scd41_ok || veml_ok;
+  sensors_ok = bme_ok || scd41_ok || veml_ok || bh_ok || bmv_ok || sgp41_ok || sgp_ok || soil_ok;
+  // 0.4.1: same summary as the MagicBox firmware, so the Serial Monitor shows
+  // which box this is and what it found, without the app.
+  {
+    String l;
+    if (bme_ok)   l += "BME280,";
+    if (scd41_ok) l += "SCD41,";
+    if (veml_ok)  l += "VEML7700,";
+    if (bh_ok)    l += "BH1750,";
+    if (bmv_ok)   l += "BMV080,";
+    if (sgp41_ok) l += "SGP41,";
+    if (sgp_ok)   l += "SGP30,";
+    if (soil_ok)  l += "SOIL,";
+    if (l.length()) l.remove(l.length() - 1);
+    Serial.printf("DEVICE: %s\nTYPE: FIELDBOX\nSENSORS: %s\nFW: %s\n",
+                  DEVICE_ID, l.length() ? l.c_str() : "NONE", FW_VERSION);
+  }
 
   // begin(false), twice, then format: begin(true)'s format-on-fail meant a
   // single transient mount hiccup (brownout at exactly the wrong read) could
@@ -875,6 +1316,39 @@ void setup() {
                 freeBytes() / 1024);
 
   boot_ms = millis();   // starts the 2 s "sensors OK" LED, without blocking
+  // 0.4.0: BT Classic + the BMV080's 60 KB loop stack share one heap; the
+  // first bench run must show what is left (expected order: 60-100 KB).
+  Serial.printf("[MEM] free heap %u B, largest block %u B, min ever %u B, loop stack free %u B\n",
+                ESP.getFreeHeap(), ESP.getMaxAllocHeap(), ESP.getMinFreeHeap(),
+                (unsigned)uxTaskGetStackHighWaterMark(NULL));
+}
+
+// 0.4.1: the optional EASE sensors on Serial too (0.4.0 sent them only to the
+// app, so the Serial Monitor showed T/H/P/CO2/lux and nothing else). One line
+// per second, only the sensors found at boot; "--" = fitted but no value yet
+// (warm-up, SGP41 conditioning, PM blocked or still starting).
+static void printExtraLine() {
+  if (!(bmv_ok || sgp41_ok || sgp_ok || soil_ok || bh_ok)) return;
+  char b[200]; size_t n = 0;
+  n += snprintf(b + n, sizeof b - n, "[1Hz+]");
+  if (bmv_ok) {
+    if (ext.pm_valid) n += snprintf(b + n, sizeof b - n, " PM1=%d PM2.5=%d PM10=%d", ext.pm1, ext.pm25, ext.pm10);
+    else n += snprintf(b + n, sizeof b - n, " PM=%s", ext.pm_obs ? "BLOCKED" : "--");
+  }
+  if (sgp41_ok) {
+    n += snprintf(b + n, sizeof b - n, ext.voc_valid ? " VOC=%d" : " VOC=--", (int)ext.voc);
+    n += snprintf(b + n, sizeof b - n, ext.nox_valid ? " NOx=%d" : " NOx=--", (int)ext.nox);
+  }
+  if (sgp_ok) {
+    if (ext.sgp30_valid) n += snprintf(b + n, sizeof b - n, " TVOC=%u eCO2=%u", (unsigned)ext.tvoc, (unsigned)ext.eco2);
+    else n += snprintf(b + n, sizeof b - n, " TVOC=-- (warm-up)");
+  }
+  if (soil_ok) {
+    if (ext.soil_valid) n += snprintf(b + n, sizeof b - n, " SOIL=%d SOIL_T=%.1f", (int)ext.soil, ext.soil_t);
+    else n += snprintf(b + n, sizeof b - n, " SOIL=--");
+  }
+  if (bh_ok) n += snprintf(b + n, sizeof b - n, " (lux from BH1750)");
+  Serial.println(b);
 }
 
 void loop() {
@@ -882,6 +1356,8 @@ void loop() {
   unsigned long now = millis();
 
   if (scd41_ok && now - t_scd_read >= SCD_MS) { t_scd_read = now; readScd(); }
+  serveBmv();
+  if (veml_ok) vemlService(millis());
 
   // SCD41 dying mid-walk (loose wire/brownout): no successful read for 15 s →
   // empty CSV cells instead of the last value repeated for hours.
@@ -897,6 +1373,7 @@ void loop() {
                   cur.T, cur.H, cur.P, cur.co2,
                   cur.scd_valid ? "valid" : "INVALID",
                   (unsigned long)((millis() - t_scd_ok) / 1000), cur.lux);
+    printExtraLine();
   }
 
   if (now - t_log >= LOG_MS) {

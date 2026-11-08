@@ -4,7 +4,7 @@
 
 [English](README.md) · **Română**
 
-**Versiunea 0.9.0** · Android 10 sau mai nou · firmware-ul cutiei 0.3.1-bt · manuale în română și în engleză
+**Versiunea 0.11.0** · Android 10 sau mai nou · firmware-ul cutiei 0.4.1-bt · manuale în română și în engleză
 
 ## Pentru profesori
 
@@ -15,18 +15,20 @@ Aplicația **Field Box BT** de pe un telefon Android vorbește cu ea prin
 Bluetooth: arată valorile în timp real, înregistrează traseul pe hartă,
 citește cutia la fiecare stație, cu fotografie, și face un raport PDF al zilei,
 pe care clasa îl poate compara între grupe.
+Din 0.11.0 cutia recunoaște și senzori opționali (particule PM1/PM2,5/PM10,
+indicii VOC și NOx, TVOC/eCO₂, umiditatea solului), iar aplicația îi arată live.
 
 **Aplicația și cutia au manuale în română și în engleză:** un manual de
 utilizare (fiecare ecran, ziua de teren pas cu pas, ce faceți când ceva nu
 merge, o fișă de teren pe o pagină) și un ghid de instalare.
 
-### ⬇️ [Descărcați Field Box 0.9.0 (un singur fișier ZIP)](https://github.com/GeoEduLab/FieldBox/releases/download/v0.9.0/FieldBox_v0.9.0.zip)
+### ⬇️ [Descărcați Field Box 0.11.0 (un singur fișier ZIP)](https://github.com/GeoEduLab/FieldBox/releases/download/v0.11.0/FieldBox_v0.11.0.zip)
 
 Arhiva conține aplicația, firmware-ul cutiei și cele patru manuale, toate din
 aceeași versiune.
 
 Doar manualele (PDF, în română și în engleză, în aceleași foldere ca
-în arhivă): **[FieldBox_docs_v0.9.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.9.0/FieldBox_docs_v0.9.0.zip)**. Fiecare PDF de mai jos se
+în arhivă): **[FieldBox_docs_v0.11.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.11.0/FieldBox_docs_v0.11.0.zip)**. Fiecare PDF de mai jos se
 deschide și aici, pe GitHub; săgeata ⬇ de lângă el îl descarcă.
 
 ---
@@ -49,7 +51,7 @@ alt="Stânga: raportul comparativ, cu grupele pe hartă. Dreapta: pagina zilei c
 Aplicația nu este în Play Store; se instalează din fișierul APK din folderul
 `app`.
 
-1. Aduceți `fieldbox-bt-0.9.0.apk` pe telefon (WhatsApp, cablu USB sau
+1. Aduceți `fieldbox-bt-0.11.0.apk` pe telefon (WhatsApp, cablu USB sau
    Google Drive) și apăsați pe el.
 2. Dacă Android cere, permiteți instalarea **din această sursă** („Allow from
    this source”), apoi apăsați **Install**.
@@ -69,15 +71,15 @@ Asocierea cutiei prin Bluetooth și prima conectare sunt în același ghid
 ## 2. Firmware-ul cutiei
 
 Cutiile livrate nu au nevoie de nimic. Pentru o actualizare, deschideți
-`firmware/fieldbox_bt_v0_3/fieldbox_bt_v0_3.ino` în **Arduino IDE** și
+`firmware/fieldbox_bt_v0_4/fieldbox_bt_v0_4.ino` în **Arduino IDE** și
 scrieți-l pe cutie prin USB. Capitolul 5 din [ghidul de instalare](manuale/Instalare_RO.pdf) [⬇](https://github.com/GeoEduLab/FieldBox/raw/main/manuale/Instalare_RO.pdf)
 arată fiecare clic, cu capturi de ecran. Cu esptool sau Flash Download Tool,
-scrieți `firmware/fieldbox-fw-0.3.1-bt.bin` la adresa `0x0`. **Luați mai întâi
+scrieți `firmware/fieldbox-fw-0.4.1-bt.bin` la adresa `0x0`. **Luați mai întâi
 fișierele de pe cutie:** prima pornire după actualizare îi golește memoria.
 
 ## 3. Manualele
 
-Toate într-o singură arhivă: **[FieldBox_docs_v0.9.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.9.0/FieldBox_docs_v0.9.0.zip)**. Un singur
+Toate într-o singură arhivă: **[FieldBox_docs_v0.11.0.zip](https://github.com/GeoEduLab/FieldBox/releases/download/v0.11.0/FieldBox_docs_v0.11.0.zip)**. Un singur
 PDF: apăsați pe nume ca să-l citiți pe GitHub, sau pe ⬇ ca să-l descărcați.
 
 | | Română | English |
